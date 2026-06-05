@@ -4,11 +4,13 @@ import { useState } from "react";
 import ChatBox from "@/components/ChatBox";
 import ResultsTable from "@/components/ResultsTable";
 import QueryHistory from "@/components/QueryHistory";
-import type { AskResponse, HistoryEntry, Role } from "@/lib/types";
+import { CAMPUSES, EMPLOYEES, type AskResponse, type HistoryEntry, type Role } from "@/lib/types";
 
 export default function Page() {
   const [query, setQuery] = useState("");
   const [role, setRole] = useState<Role>("HR_ADMIN");
+  const [campus, setCampus] = useState<string>(CAMPUSES[0].code);
+  const [employeeName, setEmployeeName] = useState<string>(EMPLOYEES[3]); // Priya Menon
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AskResponse | null>(null);
@@ -28,7 +30,12 @@ export default function Page() {
       const res = await fetch("/api/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q, role }),
+        body: JSON.stringify({
+          query: q,
+          role,
+          campus: role === "CAMPUS_HEAD" ? campus : null,
+          employeeName: role === "EMPLOYEE" ? employeeName : null,
+        }),
       });
       const data = await res.json();
 
@@ -44,6 +51,8 @@ export default function Page() {
           id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
           query: q,
           role,
+          campus: role === "CAMPUS_HEAD" ? campus : null,
+          employeeName: role === "EMPLOYEE" ? employeeName : null,
           response,
           at: new Date().toISOString(),
         },
@@ -59,6 +68,8 @@ export default function Page() {
   function onSelectHistory(entry: HistoryEntry) {
     setQuery(entry.query);
     setRole(entry.role);
+    if (entry.campus) setCampus(entry.campus);
+    if (entry.employeeName) setEmployeeName(entry.employeeName);
     setResult(entry.response);
     setAskedQuery(entry.query);
     setError(null);
@@ -77,6 +88,10 @@ export default function Page() {
         setQuery={setQuery}
         role={role}
         setRole={setRole}
+        campus={campus}
+        setCampus={setCampus}
+        employeeName={employeeName}
+        setEmployeeName={setEmployeeName}
         loading={loading}
         onSubmit={onSubmit}
       />

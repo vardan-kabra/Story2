@@ -14,17 +14,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const { query, role } = (body ?? {}) as { query?: unknown; role?: unknown };
+  const { query, role, campus, employeeName } = (body ?? {}) as {
+    query?: unknown;
+    role?: unknown;
+    campus?: unknown;
+    employeeName?: unknown;
+  };
 
   if (typeof query !== "string" || query.trim().length === 0) {
     return NextResponse.json({ error: "A non-empty 'query' string is required." }, { status: 400 });
   }
 
   // Default to the least-privileged role if none/invalid is supplied.
+  // In production this principal would come from the authenticated Nucleus
+  // session, not from the request body.
   const resolvedRole: Role = isRole(role) ? role : "EMPLOYEE";
+  const principal = {
+    role: resolvedRole,
+    campus: resolvedRole === "CAMPUS_HEAD" && typeof campus === "string" ? campus : null,
+    employeeName:
+      resolvedRole === "EMPLOYEE" && typeof employeeName === "string" ? employeeName : null,
+  };
 
   try {
-    const result = await askHr(query.trim(), resolvedRole);
+    const result = await askHr(query.trim(), principal);
     return NextResponse.json({
       answer: result.answer,
       toolsUsed: result.toolsUsed,

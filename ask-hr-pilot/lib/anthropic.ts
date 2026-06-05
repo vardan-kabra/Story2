@@ -1,5 +1,12 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { hasAccess, type Role } from "./auth";
+import { hasAccess } from "./auth";
+import {
+  authorizeTool,
+  describeScope,
+  scopeRecords,
+  shouldForceCampus,
+  type Principal,
+} from "./access";
 import { ensureDb } from "./db";
 import { TOOLS, toolDefinitions } from "./tools";
 
@@ -36,18 +43,21 @@ export interface AskResult {
   confidence: string | null;
 }
 
-function systemPrompt(role: Role): string {
+function systemPrompt(principal: Principal): string {
   const today = new Date().toISOString().slice(0, 10);
   return [
     "You are 'Ask HR', an assistant for a multi-campus school HR system.",
-    `Today's date is ${today}. The current user's role is ${role}.`,
+    `Today's date is ${today}. The current user's role is ${principal.role}.`,
+    "",
+    `ACCESS SCOPE: ${describeScope(principal)}`,
     "",
     "RULES:",
     "- You can ONLY obtain data by calling the provided tools. You must never invent employee data, leave balances, managers, requests, or policy text.",
     "- Use the smallest set of tools needed to answer the question, then give a concise, direct answer.",
     "- For policy questions, rely on the policy tool and ALWAYS cite the policy source returned (e.g. the section/document name). If no policy is found, say so plainly.",
     "- If a tool returns no records, tell the user the information was not found rather than guessing.",
-    "- If a tool is denied because the user's role lacks permission, explain that the data requires HR_ADMIN or CAMPUS_HEAD access and do not attempt to work around it.",
+    "- If a tool is denied or records are hidden because of the access scope above, explain the restriction to the user and do not attempt to work around it.",
+    "- Tool results are already filtered to what this user is allowed to see; treat anything not returned as not visible to them.",
     "- Campus codes include FSK (Fountainhead School Koba) and FWGS (Fountainhead World Green School).",
     "- Keep answers focused. If you are uncertain or the data is incomplete, say so explicitly.",
   ].join("\n");
@@ -58,8 +68,9 @@ function systemPrompt(role: Role): string {
  *   user query → Claude picks a safe tool → backend validates role + executes
  *   → result fed back to Claude → Claude writes the final answer.
  */
-export async function askHr(query: string, role: Role): Promise<AskResult> {
+export async function askHr(query: string, principal: Principal): Promise<AskResult> {
   const anthropic = getClient();
+  const role = principal.role;
 
   // Initialise the (read-only) database before any tool can run.
   await ensureDb();
@@ -72,6 +83,7 @@ export async function askHr(query: string, role: Role): Promise<AskResult> {
   const sources: Record<string, unknown>[] = [];
   const sourceLabels = new Set<string>();
   let sawEmptyResult = false;
+  let totalRedacted = 0;
 
   let finalText = "";
 
@@ -80,7 +92,7 @@ export async function askHr(query: string, role: Role): Promise<AskResult> {
       model: MODEL,
       max_tokens: 4096,
       thinking: { type: "adaptive" },
-      system: systemPrompt(role),
+      system: systemPrompt(principal),
       tools: toolDefinitions(),
       messages,
     });
@@ -117,23 +129,34 @@ export async function askHr(query: string, role: Role): Promise<AskResult> {
         continue;
       }
 
-      // Backend permission validation BEFORE executing anything.
-      if (!hasAccess(role, spec.requiredRoles)) {
-        const required = (spec.requiredRoles ?? []).join(" or ");
+      // Backend permission validation BEFORE executing anything:
+      //   (1) coarse elevated-role gate from the tool registry, plus
+      //   (2) principal-aware authorization (EMPLOYEE allow-list / campus set).
+      const coarseOk = hasAccess(role, spec.requiredRoles);
+      const fine = authorizeTool(principal, block.name);
+      if (!coarseOk || !fine.allowed) {
+        const reason = !coarseOk
+          ? `requires role ${(spec.requiredRoles ?? []).join(" or ")}`
+          : fine.reason;
         toolsUsed.push({
           tool: block.name,
           input,
           allowed: false,
           recordCount: 0,
-          note: `Access denied (requires ${required}).`,
+          note: `Access denied: ${reason}`,
         });
         toolResults.push({
           type: "tool_result",
           tool_use_id: block.id,
           is_error: true,
-          content: `ACCESS DENIED: "${block.name}" requires role ${required}. The current user is ${role}.`,
+          content: `ACCESS DENIED for "${block.name}" (user is ${role}): ${reason}.`,
         });
         continue;
+      }
+
+      // CAMPUS_HEAD: force any campus argument to their own campus.
+      if (shouldForceCampus(principal, block.name) && principal.campus) {
+        input.campus = principal.campus;
       }
 
       // Execute the approved safe query.
@@ -152,22 +175,35 @@ export async function askHr(query: string, role: Role): Promise<AskResult> {
         continue;
       }
 
+      // Data-level scoping: drop records the principal isn't allowed to see.
+      const scoped = scopeRecords(principal, block.name, result.records);
+      if (scoped.redactedCount > 0) totalRedacted += scoped.redactedCount;
+
+      const notes: string[] = [];
+      if (result.note) notes.push(result.note);
+      if (scoped.redactedCount > 0) {
+        notes.push(
+          `${scoped.redactedCount} record(s) hidden by your access scope (${describeScope(principal)})`,
+        );
+      }
+      const note = notes.length ? notes.join(" ") : undefined;
+
       toolsUsed.push({
         tool: block.name,
         input,
         allowed: true,
-        recordCount: result.records.length,
-        note: result.note,
+        recordCount: scoped.records.length,
+        note,
       });
-      for (const rec of result.records) sources.push({ _tool: block.name, ...rec });
+      for (const rec of scoped.records) sources.push({ _tool: block.name, ...rec });
       if (result.source) sourceLabels.add(result.source);
-      if (result.records.length === 0) sawEmptyResult = true;
+      if (scoped.records.length === 0) sawEmptyResult = true;
 
       toolResults.push({
         type: "tool_result",
         tool_use_id: block.id,
         content: JSON.stringify(
-          { records: result.records, note: result.note ?? null, source: result.source },
+          { records: scoped.records, note: note ?? null, source: result.source },
           null,
           2,
         ),
@@ -188,7 +224,9 @@ export async function askHr(query: string, role: Role): Promise<AskResult> {
   if (toolsUsed.length === 0) {
     confidence = "No data tools were used — this answer is not grounded in the HR database.";
   } else if (deniedTools.length > 0) {
-    confidence = "Some data was withheld because the current role lacks permission.";
+    confidence = `Some data was withheld: your ${role} access scope does not permit it.`;
+  } else if (totalRedacted > 0) {
+    confidence = `${totalRedacted} record(s) were hidden by your ${role} access scope.`;
   } else if (sawEmptyResult && sources.length === 0) {
     confidence = "No matching records were found, so the answer may be incomplete.";
   }

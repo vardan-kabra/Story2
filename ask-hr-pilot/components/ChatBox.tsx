@@ -1,11 +1,11 @@
 "use client";
 
-import type { Role } from "@/lib/types";
+import { CAMPUSES, EMPLOYEES, type Role } from "@/lib/types";
 
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
-  { value: "HR_ADMIN", label: "HR_ADMIN (full access)" },
-  { value: "CAMPUS_HEAD", label: "CAMPUS_HEAD (campus-wide views)" },
-  { value: "EMPLOYEE", label: "EMPLOYEE (limited access)" },
+  { value: "HR_ADMIN", label: "HR_ADMIN (all campuses)" },
+  { value: "CAMPUS_HEAD", label: "CAMPUS_HEAD (one campus)" },
+  { value: "EMPLOYEE", label: "EMPLOYEE (own record only)" },
 ];
 
 const EXAMPLES = [
@@ -24,6 +24,10 @@ export default function ChatBox({
   setQuery,
   role,
   setRole,
+  campus,
+  setCampus,
+  employeeName,
+  setEmployeeName,
   loading,
   onSubmit,
 }: {
@@ -31,6 +35,10 @@ export default function ChatBox({
   setQuery: (v: string) => void;
   role: Role;
   setRole: (r: Role) => void;
+  campus: string;
+  setCampus: (c: string) => void;
+  employeeName: string;
+  setEmployeeName: (e: string) => void;
   loading: boolean;
   onSubmit: () => void;
 }) {
@@ -63,6 +71,40 @@ export default function ChatBox({
               </option>
             ))}
           </select>
+
+          {role === "CAMPUS_HEAD" && (
+            <div style={{ marginTop: 10 }}>
+              <label htmlFor="campus">Campus (your scope)</label>
+              <select
+                id="campus"
+                value={campus}
+                onChange={(e) => setCampus(e.target.value)}
+              >
+                {CAMPUSES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.code} — {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {role === "EMPLOYEE" && (
+            <div style={{ marginTop: 10 }}>
+              <label htmlFor="identity">Your identity</label>
+              <select
+                id="identity"
+                value={employeeName}
+                onChange={(e) => setEmployeeName(e.target.value)}
+              >
+                {EMPLOYEES.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       </div>
 

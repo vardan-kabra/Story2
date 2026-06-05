@@ -89,8 +89,12 @@ export function getEmployeeByName(name: string): QueryResult {
 export function getLeaveBalance(employeeName: string): QueryResult {
   const db = getDb();
   const employees = db
-    .prepare(`SELECT id, name FROM employees WHERE name LIKE ? COLLATE NOCASE ORDER BY name`)
-    .all(`%${employeeName}%`) as { id: number; name: string }[];
+    .prepare(
+      `SELECT e.id AS id, e.name AS name, c.code AS campus
+       FROM employees e LEFT JOIN campuses c ON c.id = e.campus_id
+       WHERE e.name LIKE ? COLLATE NOCASE ORDER BY e.name`,
+    )
+    .all(`%${employeeName}%`) as { id: number; name: string; campus: string | null }[];
 
   if (employees.length === 0) {
     return { records: [], source: "leave_balances", note: `No employee found matching "${employeeName}".` };
@@ -110,7 +114,7 @@ export function getLeaveBalance(employeeName: string): QueryResult {
       remaining: number;
     }[];
     for (const b of balances) {
-      records.push({ employee: emp.name, ...b });
+      records.push({ employee: emp.name, campus: emp.campus, ...b });
     }
   }
 
@@ -181,11 +185,13 @@ export function getReportingManager(employeeName: string): QueryResult {
     .prepare(
       `SELECT
          e.name        AS employee,
+         c.code        AS campus,
          m.name        AS manager,
          m.role        AS manager_role,
          m.email       AS manager_email
        FROM employees e
        LEFT JOIN employees m ON m.id = e.manager_id
+       LEFT JOIN campuses c  ON c.id = e.campus_id
        WHERE e.name LIKE ? COLLATE NOCASE
        ORDER BY e.name`,
     )
@@ -242,6 +248,7 @@ export function getPendingHRRequests(days: number): QueryResult {
       `SELECT
          r.id              AS request_id,
          e.name            AS employee,
+         c.code            AS campus,
          r.request_type    AS request_type,
          r.status          AS status,
          r.submitted_date  AS submitted_date,
@@ -249,6 +256,7 @@ export function getPendingHRRequests(days: number): QueryResult {
          r.details         AS details
        FROM hr_requests r
        LEFT JOIN employees e ON e.id = r.employee_id
+       LEFT JOIN campuses c  ON c.id = e.campus_id
        WHERE r.status = 'pending'
          AND julianday('now') - julianday(r.submitted_date) > ?
        ORDER BY days_pending DESC`,

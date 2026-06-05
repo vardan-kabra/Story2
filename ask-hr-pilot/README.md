@@ -56,7 +56,8 @@ ask-hr-pilot/
     db.ts                 # SQLite access via sql.js (WASM), loaded read-only
     safeQueries.ts        # the safe query functions
     tools.ts              # tool definitions + permission mapping
-    auth.ts               # role-based access control placeholder
+    auth.ts               # role definitions + coarse role gate
+    access.ts             # principal scoping (campus / self) placeholder
     policies.ts           # policy knowledge-base retrieval
     types.ts              # shared client/server types
   data/
@@ -135,8 +136,10 @@ npm run build && npm start
 
 ## Example queries to test
 
-Use the **role selector** in the UI to see access control in action. Queries
-marked 🔒 require `HR_ADMIN` or `CAMPUS_HEAD`.
+Use the **role selector** in the UI to see access control in action. When you
+pick `CAMPUS_HEAD` a campus selector appears (their scope); when you pick
+`EMPLOYEE` an identity selector appears (whose record they are). Queries marked
+🔒 require `HR_ADMIN` or `CAMPUS_HEAD`.
 
 | Query | Tool used |
 |---|---|
@@ -149,8 +152,15 @@ marked 🔒 require `HR_ADMIN` or `CAMPUS_HEAD`.
 | Which employees report to Ankita? | `getDirectReports` |
 | What documents are needed for reimbursement? | `getPolicyByTopic` |
 
-Try the 🔒 queries as `EMPLOYEE` to see the request denied, then switch to
-`HR_ADMIN` to see it answered.
+**Seeing the three roles differ:**
+
+- As **`EMPLOYEE`** (identity = *Ramesh Iyer*), ask *"How many casual leaves does
+  Priya have left?"* → you get nothing (you can only see your **own** record),
+  but *"How many casual leaves do I have?"* works.
+- As **`CAMPUS_HEAD`** of **FSK**, ask *"Which HR requests are pending for more
+  than 7 days?"* → you only see **FSK** requests; FWGS ones are hidden. Switch
+  the campus to **FWGS** and the list changes.
+- As **`HR_ADMIN`**, the same query shows **all** campuses.
 
 ---
 
@@ -189,13 +199,23 @@ when no matching policy is found.
   write or run SQL. All queries are parameterised and the DB is read-only.
 - **Allow-listed tool surface.** The backend executes a function only if it
   exists in the `TOOLS` registry (`lib/tools.ts`).
-- **Role-based access control.** `lib/auth.ts` gates sensitive tools. Employee-
-  wide summaries (`summarizeLeaveStatus`) and pending HR requests
-  (`getPendingHRRequests`) require `HR_ADMIN` or `CAMPUS_HEAD`. Less-sensitive
-  data (leave balances, reporting managers, general policies) is visible to all
-  roles. Permission is checked **before** any function executes; denied calls
-  are reported back to Claude, which explains the restriction rather than
-  working around it.
+- **Role-based access control with scoping.** Enforcement happens in two layers
+  (`lib/auth.ts` + `lib/access.ts`), both server-side:
+  - **HR_ADMIN** — full visibility across all campuses.
+  - **CAMPUS_HEAD** — restricted to their **own campus**. Any `campus` argument
+    is forced to their campus, and every returned record is filtered to it;
+    other campuses' rows are dropped before Claude ever sees them.
+  - **EMPLOYEE** — may only see **their own record** (profile, leave balance,
+    reporting manager) plus **general policies**. Directory listings, pending
+    requests, and campus summaries are denied; personal queries about *other*
+    people return nothing.
+
+  Sensitive org-wide tools (`summarizeLeaveStatus`, `getPendingHRRequests`)
+  additionally require `HR_ADMIN`/`CAMPUS_HEAD`. Authorization is checked
+  **before** a function runs, and results are **scoped after** it runs, so the
+  model is only ever given data the principal is allowed to see. Denied/hidden
+  data is reported back so Claude explains the restriction instead of working
+  around it.
 - **No hardcoded secrets.** The API key is read from `ANTHROPIC_API_KEY`.
 - **Grounded answers + provenance.** The API returns the tool(s) used, the
   source records, the data sources/policy citations, and a confidence/uncertainty

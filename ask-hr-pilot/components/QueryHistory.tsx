@@ -44,7 +44,11 @@ export default function QueryHistory({
           >
             <div className="history-q">{entry.query}</div>
             <div className="history-meta">
-              {entry.role} · {new Date(entry.at).toLocaleTimeString()}
+              {entry.role}
+              {entry.campus ? ` (${entry.campus})` : ""}
+              {entry.employeeName ? ` (${entry.employeeName})` : ""}
+              {" · "}
+              {new Date(entry.at).toLocaleTimeString()}
               {entry.response.toolsUsed.length > 0 &&
                 ` · ${entry.response.toolsUsed.map((t) => t.tool).join(", ")}`}
             </div>
