@@ -1,0 +1,65 @@
+[
+  {
+    "topic": "maternity_leave",
+    "title": "Maternity Leave Policy",
+    "source": "HR Policy Manual v3.2 — Section 4.1 (Maternity Leave)",
+    "keywords": ["maternity", "pregnancy", "childbirth", "maternity leave", "new mother", "delivery"],
+    "content": "Eligible female employees are entitled to 26 weeks of paid maternity leave for the first two children, as per the Maternity Benefit Act. For the third child onwards, the entitlement is 12 weeks. Leave may commence up to 8 weeks before the expected delivery date. Employees must submit a request along with a medical certificate at least 4 weeks in advance where possible. Job protection and continuity of benefits are guaranteed for the duration of the approved leave."
+  },
+  {
+    "topic": "paternity_leave",
+    "title": "Paternity Leave Policy",
+    "source": "HR Policy Manual v3.2 — Section 4.2 (Paternity Leave)",
+    "keywords": ["paternity", "father", "paternity leave", "new father", "spouse delivery"],
+    "content": "Male employees are entitled to 10 working days of paid paternity leave, to be availed within 3 months of the birth or adoption of a child. The request should be submitted through the HR portal with supporting documentation."
+  },
+  {
+    "topic": "casual_leave",
+    "title": "Casual Leave Policy",
+    "source": "HR Policy Manual v3.2 — Section 3.1 (Casual Leave)",
+    "keywords": ["casual", "casual leave", "cl", "short leave", "personal leave"],
+    "content": "Employees are entitled to 12 days of casual leave per calendar year, credited at the start of the year. Casual leave cannot be carried forward to the next year and cannot be combined with earned leave. A maximum of 3 consecutive casual leave days may be taken at a time without prior special approval."
+  },
+  {
+    "topic": "sick_leave",
+    "title": "Sick Leave Policy",
+    "source": "HR Policy Manual v3.2 — Section 3.2 (Sick Leave)",
+    "keywords": ["sick", "sick leave", "medical leave", "illness", "health"],
+    "content": "Employees are entitled to 10 days of sick leave per calendar year. For sick leave exceeding 2 consecutive days, a medical certificate from a registered practitioner is required. Unused sick leave does not carry forward."
+  },
+  {
+    "topic": "earned_leave",
+    "title": "Earned / Privilege Leave Policy",
+    "source": "HR Policy Manual v3.2 — Section 3.3 (Earned Leave)",
+    "keywords": ["earned", "earned leave", "privilege leave", "el", "annual leave", "vacation"],
+    "content": "Employees accrue 15 days of earned leave per year. Up to 30 days of earned leave may be carried forward to subsequent years. Encashment of earned leave is permitted at the time of separation, subject to a maximum of 30 days as per policy."
+  },
+  {
+    "topic": "reimbursement",
+    "title": "Expense Reimbursement Policy",
+    "source": "HR Policy Manual v3.2 — Section 6.4 (Reimbursements)",
+    "keywords": ["reimbursement", "reimburse", "expense", "claim", "documents needed", "receipts", "travel claim"],
+    "content": "To claim a reimbursement, employees must submit: (1) a completed reimbursement form, (2) original itemised receipts or invoices, (3) proof of payment (card statement or UPI confirmation), and (4) manager approval. Claims must be submitted within 30 days of the expense. Travel reimbursements additionally require the approved travel request and boarding passes / tickets where applicable. Reimbursements are processed in the next payroll cycle after approval."
+  },
+  {
+    "topic": "work_from_home",
+    "title": "Work From Home Policy",
+    "source": "HR Policy Manual v3.2 — Section 5.2 (Remote Work)",
+    "keywords": ["work from home", "wfh", "remote", "remote work", "telecommute"],
+    "content": "Work from home is available for non-teaching staff up to 4 days per month, subject to manager approval and operational needs. Teaching staff may avail WFH only for documented exceptional circumstances. Employees on WFH must remain reachable during core hours (10:00–16:00)."
+  },
+  {
+    "topic": "probation",
+    "title": "Probation Policy",
+    "source": "HR Policy Manual v3.2 — Section 2.3 (Probation)",
+    "keywords": ["probation", "probationary", "confirmation", "new joiner", "notice period probation"],
+    "content": "New employees serve a probation period of 6 months. During probation, leave entitlements are pro-rated and the notice period is 15 days. Confirmation is subject to a satisfactory performance review at the end of probation."
+  },
+  {
+    "topic": "code_of_conduct",
+    "title": "Code of Conduct",
+    "source": "HR Policy Manual v3.2 — Section 1.1 (Code of Conduct)",
+    "keywords": ["code of conduct", "conduct", "ethics", "behaviour", "discipline", "harassment"],
+    "content": "All employees are expected to maintain professional behaviour, safeguard student welfare, protect confidential information, and avoid conflicts of interest. Violations are addressed through a progressive disciplinary process. The organisation maintains a zero-tolerance stance on harassment and discrimination."
+  }
+]
