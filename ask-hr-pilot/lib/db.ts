@@ -29,6 +29,31 @@ export interface DbAdapter {
 let adapter: DbAdapter | null = null;
 let initPromise: Promise<DbAdapter> | null = null;
 
+/**
+ * Locates sql.js's WASM binary robustly. Inside the Next.js server bundle,
+ * `require.resolve("sql.js")` can be rewritten by the bundler and return a bad
+ * path, so we prefer a direct node_modules path off the project root and fall
+ * back to `require.resolve` (which works under plain Node, e.g. the seed script).
+ */
+function locateWasm(): string {
+  const candidates: string[] = [
+    path.join(process.cwd(), "node_modules", "sql.js", "dist", "sql-wasm.wasm"),
+  ];
+  try {
+    candidates.push(
+      path.join(path.dirname(require.resolve("sql.js")), "sql-wasm.wasm"),
+    );
+  } catch {
+    /* require.resolve unavailable in this context — rely on the cwd path */
+  }
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  throw new Error(
+    `Could not locate sql-wasm.wasm. Looked in:\n  ${candidates.join("\n  ")}`,
+  );
+}
+
 function wrap(db: SqlJsDatabase): DbAdapter {
   return {
     prepare(sql: string): Stmt {
@@ -71,8 +96,7 @@ export async function ensureDb(): Promise<DbAdapter> {
           `Database not found at ${DB_PATH}. Run "npm run seed" to create it.`,
         );
       }
-      const sqlJsDist = path.dirname(require.resolve("sql.js"));
-      const wasmBinary = fs.readFileSync(path.join(sqlJsDist, "sql-wasm.wasm"));
+      const wasmBinary = fs.readFileSync(locateWasm());
       const SQL = await initSqlJs({ wasmBinary: wasmBinary as unknown as ArrayBuffer });
       const fileBuffer = fs.readFileSync(DB_PATH);
       adapter = wrap(new SQL.Database(fileBuffer));

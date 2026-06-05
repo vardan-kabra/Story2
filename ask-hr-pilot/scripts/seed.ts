@@ -31,8 +31,11 @@ async function main() {
 
   const seedSql = fs.readFileSync(SQL_PATH, "utf8");
 
-  const sqlJsDist = path.dirname(require.resolve("sql.js"));
-  const wasmBinary = fs.readFileSync(path.join(sqlJsDist, "sql-wasm.wasm"));
+  const cwdWasm = path.join(ROOT, "node_modules", "sql.js", "dist", "sql-wasm.wasm");
+  const wasmPath = fs.existsSync(cwdWasm)
+    ? cwdWasm
+    : path.join(path.dirname(require.resolve("sql.js")), "sql-wasm.wasm");
+  const wasmBinary = fs.readFileSync(wasmPath);
   const SQL = await initSqlJs({ wasmBinary: wasmBinary as unknown as ArrayBuffer });
 
   const db = new SQL.Database();
