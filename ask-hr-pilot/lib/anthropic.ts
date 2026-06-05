@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { hasAccess, type Role } from "./auth";
+import { ensureDb } from "./db";
 import { TOOLS, toolDefinitions } from "./tools";
 
 const MODEL = process.env.ASK_HR_MODEL || "claude-opus-4-8";
@@ -59,6 +60,9 @@ function systemPrompt(role: Role): string {
  */
 export async function askHr(query: string, role: Role): Promise<AskResult> {
   const anthropic = getClient();
+
+  // Initialise the (read-only) database before any tool can run.
+  await ensureDb();
 
   const messages: Anthropic.MessageParam[] = [
     { role: "user", content: query },

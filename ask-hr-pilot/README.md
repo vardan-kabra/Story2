@@ -53,7 +53,7 @@ ask-hr-pilot/
     QueryHistory.tsx      # query history list
   lib/
     anthropic.ts          # Claude integration + agent loop
-    db.ts                 # read-only SQLite connection
+    db.ts                 # SQLite access via sql.js (WASM), loaded read-only
     safeQueries.ts        # the safe query functions
     tools.ts              # tool definitions + permission mapping
     auth.ts               # role-based access control placeholder
@@ -75,6 +75,9 @@ ask-hr-pilot/
 
 - Node.js 18.18+ (Node 20/22 recommended)
 - An Anthropic API key
+
+> No C/C++ build tools required — the SQLite engine is **sql.js** (pure
+> WebAssembly), so `npm install` works on Windows/macOS/Linux without a compiler.
 
 ### 1. Install dependencies
 
@@ -167,7 +170,8 @@ The only ways Claude can touch data are these allow-listed functions
 - `summarizeLeaveStatus(campus, role?)` — 🔒 elevated
 
 Every function uses **parameterised** SQL (user input is never interpolated into
-SQL text), and the database connection is opened **read-only**.
+SQL text), and the database is loaded **read-only** (in-memory via sql.js) and
+never written back by the app.
 
 ### Policy handling
 
