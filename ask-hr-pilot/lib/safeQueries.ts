@@ -71,6 +71,15 @@ const EMPLOYEE_SELECT = `
 
 // ── safe queries ─────────────────────────────────────────────────────────────
 
+/** Lists all campuses (code + name). General reference data, not campus-scoped. */
+export function getCampuses(): QueryResult {
+  const db = getDb();
+  const rows = db
+    .prepare(`SELECT code, name FROM campuses ORDER BY code`)
+    .all() as Record<string, unknown>[];
+  return { records: rows, source: "campuses" };
+}
+
 /** Looks up employees whose name matches (case-insensitive, partial). */
 export function getEmployeeByName(name: string): QueryResult {
   const db = getDb();

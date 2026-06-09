@@ -23,21 +23,22 @@ npm run build          # production build
 npm start              # serve the production build
 npm run typecheck      # tsc --noEmit
 npm run lint           # next lint
+npm test               # vitest run (the pretest hook re-seeds the DB first)
+npm run test:watch     # vitest watch mode
 ```
 
 **Environment** (read from `.env.local`, never hardcoded):
 `ANTHROPIC_API_KEY` (required), `ASK_HR_MODEL` (default `claude-opus-4-8`),
 `ASK_HR_DB_PATH` (default `./data/ask-hr.db`).
 
-**Testing:** there is no test framework wired up. Verification is done via
-`npm run typecheck` + `npm run build`, plus throwaway `npx tsx` scripts that
-import `lib/` and run queries against the seeded DB. The repeatable pattern for
-an ad-hoc check (used during development) is:
-
-```bash
-# write a temp .ts that calls ensureDb() then the functions, then:
-npx tsx scratch.ts && rm scratch.ts
-```
+**Testing:** Vitest, under `tests/`. `npm test` runs a `pretest` hook that
+re-seeds `data/ask-hr.db` first, so DB-backed tests always have fresh data.
+Run a subset with `npx vitest run tests/access.test.ts` or by name with
+`npx vitest run -t "forces campus"`. Coverage: `access.test.ts` (pure scoping
+logic, no DB), `safeQueries.test.ts` (queries against the seeded DB), and
+`pipeline.test.ts` (the authorize → force-campus → execute → scope contract the
+`/api/ask` loop relies on, without invoking the model). Tests import from
+`../lib/...` (relative) — the `@/` alias is not configured in Vitest.
 
 Anything touching `lib/db.ts` or `lib/safeQueries.ts` must call
 `await ensureDb()` before `getDb()` / any query function.
@@ -110,9 +111,15 @@ in `auth.ts`, `access.ts`, and `route.ts`.
    description + `input_schema`), an `execute` that adapts the tool input to the
    safe function, and optional `requiredRoles` (use `ELEVATED` for org-wide
    data).
-3. **`lib/access.ts`** — if EMPLOYEE should be able to call it, add it to
-   `EMPLOYEE_ALLOWED` and give it a `SUBJECT_KEY`. If it takes a campus
-   argument, add it to `CAMPUS_INPUT_TOOLS`.
+3. **`lib/access.ts`** — wire up scoping:
+   - General reference data (not personal/campus-specific) → add to
+     `UNSCOPED_TOOLS` so every role gets it unfiltered (e.g. `getCampuses`,
+     `getPolicyByTopic`).
+   - If EMPLOYEE should be able to call it, add it to `EMPLOYEE_ALLOWED`; for a
+     personal-data tool also give it a `SUBJECT_KEY` (the record field that
+     names the subject) so EMPLOYEE results are scoped to themselves.
+   - If it takes a campus argument that should be forced, add it to
+     `CAMPUS_INPUT_TOOLS`.
 
 ## Data layer specifics
 
@@ -145,10 +152,6 @@ in `auth.ts`, `access.ts`, and `route.ts`.
 
 A backlog of enhancements that fit the architecture:
 
-- **`getCampuses()` discovery tool** — so "across all campuses" questions fan
-  out over *every* campus instead of only the ones named in the prompt
-  (currently a real completeness gap; Claude can miss campuses it wasn't told
-  about, e.g. FHQ).
 - **Audit logging** — persist every query, chosen tool, principal, and returned
   record ids (a stated Nucleus production requirement).
 - **Real authentication / Nucleus session** — replace the client-supplied

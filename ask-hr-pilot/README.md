@@ -132,6 +132,13 @@ For a production build:
 npm run build && npm start
 ```
 
+Run the tests (the `pretest` hook re-seeds the database first):
+
+```bash
+npm test          # vitest run
+npm run test:watch
+```
+
 ---
 
 ## Example queries to test
@@ -151,6 +158,7 @@ pick `CAMPUS_HEAD` a campus selector appears (their scope); when you pick
 | 🔒 Summarize the leave status of all teachers at FSK. | `summarizeLeaveStatus` |
 | Which employees report to Ankita? | `getDirectReports` |
 | What documents are needed for reimbursement? | `getPolicyByTopic` |
+| List everyone hired in 2023 across all campuses. | `getCampuses` + `getEmployeesByCampus` (composition) |
 
 **Seeing the three roles differ:**
 
@@ -169,6 +177,8 @@ pick `CAMPUS_HEAD` a campus selector appears (their scope); when you pick
 The only ways Claude can touch data are these allow-listed functions
 (`lib/safeQueries.ts`, exposed as tools in `lib/tools.ts`):
 
+- `getCampuses()` — discovery tool; lets Claude enumerate every campus before
+  fanning out across them (so "all campuses" questions don't miss any)
 - `getEmployeeByName(name)`
 - `getLeaveBalance(employeeName)`
 - `getEmployeesByCampus(campus, filters?)`

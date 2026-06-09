@@ -25,6 +25,19 @@ export interface ToolSpec {
 const ELEVATED: Role[] = ["HR_ADMIN", "CAMPUS_HEAD"];
 
 export const TOOLS: Record<string, ToolSpec> = {
+  getCampuses: {
+    definition: {
+      name: "getCampuses",
+      description:
+        "List every campus (code and name). Call this FIRST for questions that span multiple or all campuses, so you enumerate all campuses instead of assuming which ones exist, then query each.",
+      input_schema: {
+        type: "object",
+        properties: {},
+      },
+    },
+    execute: () => q.getCampuses(),
+  },
+
   getEmployeeByName: {
     definition: {
       name: "getEmployeeByName",

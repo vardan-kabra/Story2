@@ -18,12 +18,19 @@ export interface Principal {
   employeeName?: string | null;
 }
 
-/** Tools an EMPLOYEE may use — their own personal data + general policies. */
+/**
+ * General reference tools that are not personal/campus data — returned to every
+ * role unfiltered (HR policies, the campus list).
+ */
+const UNSCOPED_TOOLS = new Set(["getPolicyByTopic", "getCampuses"]);
+
+/** Tools an EMPLOYEE may use — their own personal data + general reference. */
 const EMPLOYEE_ALLOWED = new Set([
   "getEmployeeByName",
   "getLeaveBalance",
   "getReportingManager",
   "getPolicyByTopic",
+  "getCampuses",
 ]);
 
 /** For EMPLOYEE self-scoping: which record field names the subject person. */
@@ -62,7 +69,7 @@ export function authorizeTool(principal: Principal, toolName: string): AccessDec
     }
   }
 
-  if (principal.role === "CAMPUS_HEAD" && !principal.campus && toolName !== "getPolicyByTopic") {
+  if (principal.role === "CAMPUS_HEAD" && !principal.campus && !UNSCOPED_TOOLS.has(toolName)) {
     return { allowed: false, reason: "No campus is set for this CAMPUS_HEAD session." };
   }
 
@@ -94,6 +101,11 @@ export function scopeRecords(
     return { records, redactedCount: 0 };
   }
 
+  // General reference data (policies, campus list) is visible to every role.
+  if (UNSCOPED_TOOLS.has(toolName)) {
+    return { records, redactedCount: 0 };
+  }
+
   // CAMPUS_HEAD: keep only records belonging to their campus (records without a
   // campus field — e.g. policies — are not campus-specific and are kept).
   if (principal.role === "CAMPUS_HEAD") {
@@ -110,9 +122,8 @@ export function scopeRecords(
     return { records: kept, redactedCount: redacted };
   }
 
-  // EMPLOYEE: policies are open; otherwise keep only records about themselves.
+  // EMPLOYEE: keep only records about themselves (general tools handled above).
   if (principal.role === "EMPLOYEE") {
-    if (toolName === "getPolicyByTopic") return { records, redactedCount: 0 };
     const key = SUBJECT_KEY[toolName];
     const self = (principal.employeeName ?? "").toLowerCase();
     if (!key || !self) return { records: [], redactedCount: records.length };

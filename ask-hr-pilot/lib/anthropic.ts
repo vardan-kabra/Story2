@@ -58,7 +58,7 @@ function systemPrompt(principal: Principal): string {
     "- If a tool returns no records, tell the user the information was not found rather than guessing.",
     "- If a tool is denied or records are hidden because of the access scope above, explain the restriction to the user and do not attempt to work around it.",
     "- Tool results are already filtered to what this user is allowed to see; treat anything not returned as not visible to them.",
-    "- Campus codes include FSK (Fountainhead School Koba) and FWGS (Fountainhead World Green School).",
+    "- To answer questions that span multiple or all campuses, FIRST call getCampuses to enumerate every campus, then query each one — never assume which campuses exist.",
     "- Keep answers focused. If you are uncertain or the data is incomplete, say so explicitly.",
   ].join("\n");
 }
